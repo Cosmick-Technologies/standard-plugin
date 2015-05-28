@@ -3,250 +3,145 @@
 	 * Plugin Name: Cosmick Standard Plugin
 	 * Plugin URI: http://cosmicktechnologies.com/
 	 * Description: Just a standard WordPress plugin we use to keep the sites we work on up to date on the latest and greatest. Do be warned, this is tailored for our needs and it's not meant to be used in the consumer space
-	 * Version: 1.0
+	 * Version: 0.1.1
 	 * Author: Cosmick Technologies
 	 * Author URI: http://cosmicktechnologies.com/
 	 * License: GPL2
 	 */
 
-	define('MAIN_VERSION', '1.0');
+	define('WP_DEBUG_LOG', true);
+	define('WP_DEBUG_DISPLAY', false);
+	if (!defined('ABSPATH')) exit;
 
-	defined('ABSPATH') or die('No script kiddies please!');
+	include('theme-options.php');
 
-	function address_shortcode($attr) {
-		$params = shortcode_atts(array('value' => null), $attr);
-		$params['value'] = urlEncode($params['value']);
+	add_action('wp_head', function () {
+		switch (strToLower(get_theme_mod('site_mode'))) {
+			case 'dev':
+				global $post;
+				if (!is_user_logged_in()) {
+					die('<meta http-equiv="refresh" content="0;URL=\'' . wp_login_url() . '\'" />');
+				}
+				break;
+			case 'prev':
+				global $post;
+				if (!is_user_logged_in() && get_post($post)->post_name != 'preview') {
+					die('<meta http-equiv="refresh" content="0;URL=\'' . get_permalink(get_page_by_path('preview')) . '\'" />');
+				}
+				break;
+		}
+	});
 
-		return "http://maps.apple.com/?daddr={$params['value']}";
-	}
-	add_shortcode('address', 'address_shortcode');
+	include('shortcodes.php');
 
-	function phone_shortcode($attr) {
-		$params = shortcode_atts(array('value' => null), $attr);
-		$params['value'] = str_replace(array('(', ')', '-', ' '), '', $params['value']);
+	add_theme_support('title-tag');
 
-		return "tel:{$params['value']}";
-	}
-	add_shortcode('phone', 'phone_shortcode');
+	add_filter('upload_mimes', function ($mimes) {
+		$mimes['svg'] = 'image/svg+xml';
+		return $mimes;
+	});
 
-	function email_shortcode($attr) {
-		$params = shortcode_atts(array('value' => null), $attr);
+	add_action('init', function () {
+		if (!is_admin()) {
+			wp_deregister_script('jquery');
+			wp_register_script('jquery', '/wp-includes/js/jquery/jquery.js', FALSE, NULL, TRUE);
+			wp_register_script('jquery-migrate', '/wp-includes/js/jquery/jquery-migrate.min.js', array('jquery'), NULL, TRUE);
+		}
+	});
 
-		return "mailto:{$params['value']}";
-	}
-	add_shortcode('email', 'email_shortcode');
-
-	function analytics_shortcode($attr) {
-		$params = shortcode_atts(array('id' => null), $attr);
-
-		return "<script type=\"text/javascript\">var _gaq=_gaq||[];_gaq.push([\"_setAccount\",\"{$params['id']}\"]),_gaq.push([\"_trackPageview\"]),function(){var t=document.createElement(\"script\");t.type=\"text/javascript\",t.async=!0,t.src=(\"https:\"==document.location.protocol?\"https://ssl\":\"http://www\")+\".google-analytics.com/ga.js\";var e=document.getElementsByTagName(\"script\")[0];e.parentNode.insertBefore(t,e)}();</script>";
-	}
-	add_shortcode('analytics', 'analytics_shortcode');
-
-	function add_analytics() {
+	add_action('wp_head', function () {
 		if (is_search()) {
-			echo(do_shortcode('[analytics id="' . of_get_option('analytics_id') . '"]'));
+			echo(do_shortcode('[analytics]'));
+		}
+	});
+
+	add_action('admin_menu', function () {
+		if (current_theme_supports('posts-to-articles')) {
+			global $menu;
+			global $submenu;
+
+			$menu[5][0] = 'Articles';
+			$menu[5][6] = 'dashicons-align-right';
+			$submenu['edit.php'][5][0] = 'All Articles';
+		}
+	});
+
+	add_action('init', function () {
+		if (current_theme_supports('posts-to-articles')) {
+			global $wp_post_types;
+
+			$labels = &$wp_post_types['post']->labels;
+			$labels->name = 'Articles';
+			$labels->singular_name = 'Article';
+			$labels->add_new = 'Add New';
+			$labels->add_new_item = 'Add Article';
+			$labels->edit_item = 'Edit Article';
+			$labels->new_item = 'Articles';
+			$labels->view_item = 'View Article';
+			$labels->search_items = 'Search Articles';
+			$labels->not_found = 'No Articles found';
+			$labels->not_found_in_trash = 'No Articles found in Trash';
+			$labels->all_items = 'All Articles';
+			$labels->menu_name = 'Articles';
+			$labels->name_admin_bar = 'Article';
+		}
+	});
+
+	class BS3_Walker_Nav_Menu extends Walker_Nav_Menu {
+		function display_element($element, &$children_elements, $max_depth, $depth, $args, &$output) {
+			$id_field = $this->db_fields['id'];
+
+			if (isset($args[0]) && is_object($args[0])) {
+				$args[0]->has_children = !empty($children_elements[$element->$id_field]);
+			}
+
+			return parent::display_element($element, $children_elements, $max_depth, $depth, $args, $output);
+		}
+
+		function start_el(&$output, $item, $depth = 0, $args = array(), $id = 0) {
+			if (is_object($args) && !empty($args->has_children)) {
+				$link_after = $args->link_after;
+				$args->link_after = ' <b class="caret"></b>';
+			}
+
+			parent::start_el($output, $item, $depth, $args, $id);
+
+			if (is_object($args) && !empty($args->has_children))
+				$args->link_after = $link_after;
+		}
+
+		function start_lvl(&$output, $depth = 0, $args = array()) {
+			$indent = '';
+			$output .= "{$indent}<ul class=\"dropdown-menu list-unstyled\">";
 		}
 	}
-	add_action('wp_head', 'add_analytics');
 
-	function logo_settings($wp_customize) {
-		$wp_customize->remove_section('title_tagline');
-		$wp_customize->remove_section('nav');
-		$wp_customize->remove_section('static_front_page');
+	add_filter('nav_menu_link_attributes', function ($atts, $item, $args) {
+		if ($args->has_children && current_theme_supports('bootstrap')) {
+			$atts['data-hover'] = 'dropdown';
+			$atts['data-toggle'] = 'dropdown';
+			$atts['class'] = 'dropdown-toggle';
+		}
 
-		$wp_customize->add_section('main', array(
-			'title' => 'Main',
-			'priority' => 30
-		));
+		return $atts;
+	}, 10, 3);
 
-		$wp_customize->add_setting('address', array(
-			'default' => '',
-			'transport' => 'refresh'
-		));
+	add_action('admin_menu', function () {
+		if (current_theme_supports('remove-comments')) {
+			remove_menu_page('edit-comments.php');
+		}
+	});
 
-		$wp_customize->add_control(new WP_Customize_Control(
-			$wp_customize, 'address', array(
-				'label' => 'Address',
-				'section' => 'main',
-				'settings' => 'address'
-			)
-		));
+	add_action('wp_before_admin_bar_render', function () {
+		if (current_theme_supports('remove-comments')) {
+			global $wp_admin_bar;
+			$wp_admin_bar->remove_menu('comments');
+		}
+	});
 
-		$wp_customize->add_setting('phone', array(
-			'default' => '',
-			'transport' => 'refresh'
-		));
-
-		$wp_customize->add_control(new WP_Customize_Control(
-			$wp_customize, 'phone', array(
-				'label' => 'Phone Number',
-				'section' => 'main',
-				'settings' => 'phone'
-			)
-		));
-
-		$wp_customize->add_setting('email', array(
-			'default' => '',
-			'transport' => 'refresh'
-		));
-
-		$wp_customize->add_control(new WP_Customize_Control(
-			$wp_customize, 'email', array(
-				'label' => 'Email',
-				'section' => 'main',
-				'settings' => 'email'
-			)
-		));
-
-		$wp_customize->add_setting('hours', array(
-			'default' => '',
-			'transport' => 'refresh'
-		));
-
-		$wp_customize->add_control(new WP_Customize_Control(
-			$wp_customize, 'hours', array(
-				'label' => 'Hours of Operation',
-				'section' => 'main',
-				'settings' => 'hours'
-			)
-		));
-
-		$wp_customize->add_section('logos', array(
-			'title' => 'Logo',
-			'priority' => 30
-		));
-
-		$wp_customize->add_setting('logo', array(
-			'default' => '',
-			'transport' => 'refresh'
-		));
-
-		$wp_customize->add_control(new WP_Customize_Image_Control(
-			$wp_customize, 'logo', array(
-				'label' => 'Normal',
-				'section' => 'logos',
-				'settings' => 'logo'
-			)
-		));
-
-		$wp_customize->add_setting('logo-fallback', array(
-			'default' => '',
-			'transport' => 'refresh'
-		));
-
-		$wp_customize->add_control(new WP_Customize_Image_Control(
-			$wp_customize, 'logo-fallback', array(
-				'label' => 'Normal (Fallback)',
-				'section' => 'logos',
-				'settings' => 'logo-fallback'
-			)
-		));
-
-		$wp_customize->add_section('footer', array(
-			'title' => 'Footer',
-			'priority' => 30
-		));
-
-		$wp_customize->add_setting('copyright', array(
-			'default' => '',
-			'transport' => 'refresh'
-		));
-
-		$wp_customize->add_control(new WP_Customize_Control(
-			$wp_customize, 'copyright', array(
-				'label' => 'Copyright',
-				'section' => 'footer',
-				'settings' => 'copyright'
-			)
-		));
-
-		$wp_customize->add_section('social-media', array(
-			'title' => 'Social Media',
-			'priority' => 30
-		));
-
-		$wp_customize->add_setting('facebook', array(
-			'default' => '',
-			'transport' => 'refresh'
-		));
-
-		$wp_customize->add_control(new WP_Customize_Control(
-			$wp_customize, 'facebook', array(
-				'label' => 'Facebook URL',
-				'section' => 'social-media',
-				'settings' => 'facebook'
-			)
-		));
-
-		$wp_customize->add_setting('twitter', array(
-			'default' => '',
-			'transport' => 'refresh'
-		));
-
-		$wp_customize->add_control(new WP_Customize_Control(
-			$wp_customize, 'twitter', array(
-				'label' => 'Twitter URL',
-				'section' => 'social-media',
-				'settings' => 'twitter'
-			)
-		));
-
-		$wp_customize->add_setting('google-plus', array(
-			'default' => '',
-			'transport' => 'refresh'
-		));
-
-		$wp_customize->add_control(new WP_Customize_Control(
-			$wp_customize, 'google-plus', array(
-				'label' => 'Google Plus URL',
-				'section' => 'social-media',
-				'settings' => 'google-plus'
-			)
-		));
-
-		$wp_customize->add_setting('linkedin', array(
-			'default' => '',
-			'transport' => 'refresh'
-		));
-
-		$wp_customize->add_control(new WP_Customize_Control(
-			$wp_customize, 'linkedin', array(
-				'label' => 'LinkedIn URL',
-				'section' => 'social-media',
-				'settings' => 'linkedin'
-			)
-		));
-
-		$wp_customize->add_setting('youtube', array(
-			'default' => '',
-			'transport' => 'refresh'
-		));
-
-		$wp_customize->add_control(new WP_Customize_Control(
-			$wp_customize, 'youtube', array(
-				'label' => 'YouTube URL',
-				'section' => 'social-media',
-				'settings' => 'youtube'
-			)
-		));
-
-		$wp_customize->add_section('misc', array(
-			'title' => 'Misc',
-			'priority' => 30
-		));
-
-		$wp_customize->add_setting('analytics_id', array(
-			'default' => '',
-			'transport' => 'refresh'
-		));
-
-		$wp_customize->add_control(new WP_Customize_Control(
-			$wp_customize, 'analytics_id', array(
-				'label' => 'Google Analytics ID',
-				'section' => 'misc',
-				'settings' => 'analytics_id'
-			)
-		));
-	}
-	add_action('customize_register', 'logo_settings');
+	add_action('init', function () {
+		if (current_theme_supports('remove-comments')) {
+			remove_post_type_support('post', 'comments');
+			remove_post_type_support('page', 'comments');
+		}
+	}, 100);
