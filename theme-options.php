@@ -205,38 +205,4 @@
 				)
 			)
 		));
-
-		$wp_customize->add_setting('enabled_pages', array(
-			'default' => '',
-			'transport' => 'refresh'
-		));
-	});
-
-	add_action('customize_register', function ($wp_customize) {
-		if (strToLower(get_theme_mod('site_mode')) == 'prev') {
-			$wp_customize->add_control(new WP_Customize_Control(
-				$wp_customize, 'enabled_pages', array(
-					'label' => 'Enabled Pages',
-					'section' => 'misc',
-					'settings' => 'enabled_pages',
-					'type' => 'numbers'
-				)
-			));
-		}
-	}, 20);
-
-	add_action('customize_register', function ($wp_customize) {
-		class Customize_Number_Control extends WP_Customize_Control {
-			public $type = 'numbers';
-
-			public function render_content()
-			{
-				?>
-				<label>
-					<span class="customize-control-title"><?php echo esc_html( $this->label ); ?></span>
-					<input type="number" size="2" step="2" min="0" value="<?php echo esc_attr(  $this->value() ); ?>" />
-				</label>
-				<?php
-			}
-		}
 	});
