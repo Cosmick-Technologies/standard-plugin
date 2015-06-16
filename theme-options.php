@@ -68,16 +68,16 @@
 			)
 		));
 
-		$wp_customize->add_setting('logo-fallback', array(
+		$wp_customize->add_setting('logo-inverted', array(
 			'default' => '',
 			'transport' => 'refresh'
 		));
 
 		$wp_customize->add_control(new WP_Customize_Image_Control(
-			$wp_customize, 'logo-fallback', array(
-				'label' => 'Normal (Fallback)',
+			$wp_customize, 'logo-inverted', array(
+				'label' => 'Normal (Inverted)',
 				'section' => 'logos',
-				'settings' => 'logo-fallback'
+				'settings' => 'logo-inverted'
 			)
 		));
 

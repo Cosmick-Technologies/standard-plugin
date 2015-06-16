@@ -13,9 +13,10 @@
 	define('WP_DEBUG_DISPLAY', false);
 	if (!defined('ABSPATH')) exit;
 
+	include('custom-functions.php');
 	include('theme-options.php');
 
-	add_action('wp_head', function () {
+	add_action('wp_head', function() {
 		switch (strToLower(get_theme_mod('site_mode'))) {
 			case 'dev':
 				global $post;
@@ -36,12 +37,12 @@
 
 	add_theme_support('title-tag');
 
-	add_filter('upload_mimes', function ($mimes) {
+	add_filter('upload_mimes', function($mimes) {
 		$mimes['svg'] = 'image/svg+xml';
 		return $mimes;
 	});
 
-	add_action('init', function () {
+	add_action('init', function() {
 		if (!is_admin()) {
 			wp_deregister_script('jquery');
 			wp_register_script('jquery', '/wp-includes/js/jquery/jquery.js', FALSE, NULL, TRUE);
@@ -49,13 +50,19 @@
 		}
 	});
 
-	add_action('wp_head', function () {
+	add_action('init', function() {
+		if (current_theme_supports('slider')) {
+			register_post_type_easy('slider', 'dashicons-slides', array('label' => array('slide', 'slides'), 'exclude_from_search', 'thumbnail'));
+		}
+	});
+
+	add_action('wp_head', function() {
 		if (is_search()) {
 			echo(do_shortcode('[analytics]'));
 		}
 	});
 
-	add_action('admin_menu', function () {
+	add_action('admin_menu', function() {
 		if (current_theme_supports('posts-to-articles')) {
 			global $menu;
 			global $submenu;
@@ -66,7 +73,7 @@
 		}
 	});
 
-	add_action('init', function () {
+	add_action('init', function() {
 		if (current_theme_supports('posts-to-articles')) {
 			global $wp_post_types;
 
@@ -87,61 +94,93 @@
 		}
 	});
 
-	if (!class_exists('BS3_Walker_Nav_Menu')) {
-		class BS3_Walker_Nav_Menu extends Walker_Nav_Menu {
-			function display_element($element, &$children_elements, $max_depth, $depth, $args, &$output) {
-				$id_field = $this->db_fields['id'];
+	class BS3_Walker_Nav_Menu extends Walker_Nav_Menu {
+		function __construct($NAV_LOCATION, $PARAMS) {
+			global $nav_location;
+			global $params;
 
-				if (isset($args[0]) && is_object($args[0])) {
-					$args[0]->has_children = !empty($children_elements[$element->$id_field]);
+			$nav_location = $NAV_LOCATION;
+			$params = $PARAMS;
+		}
+
+		function display_element($element, &$children_elements, $max_depth, $depth, $args, &$output) {
+			$id_field = $this->db_fields['id'];
+
+			if (isset($args[0]) && is_object($args[0])) {
+				$args[0]->has_children = !empty($children_elements[$element->$id_field]);
+			}
+
+			return parent::display_element($element, $children_elements, $max_depth, $depth, $args, $output);
+		}
+
+		function start_el(&$output, $item, $depth = 0, $args = array(), $id = 0) {
+			if (is_object($args) && !empty($args->has_children)) {
+				global $nav_location;
+
+				$link_after = $args->link_after;
+
+				if ($nav_location == 'sidebar') {
+					$args->link_after = ' <span class="carat-right glyphicon glyphicon-triangle-right pull-right"></span>';
+				} else {
+					$args->link_after = ' <span class="carat-down glyphicon glyphicon-triangle-bottom"></span>';
 				}
-
-				return parent::display_element($element, $children_elements, $max_depth, $depth, $args, $output);
 			}
 
-			function start_el(&$output, $item, $depth = 0, $args = array(), $id = 0) {
-				if (is_object($args) && !empty($args->has_children)) {
-					$link_after = $args->link_after;
-					$args->link_after = ' <b class="caret"></b>';
-				}
+			parent::start_el($output, $item, $depth, $args, $id);
 
-				parent::start_el($output, $item, $depth, $args, $id);
+			if (is_object($args) && !empty($args->has_children))
+				$args->link_after = $link_after;
+		}
 
-				if (is_object($args) && !empty($args->has_children))
-					$args->link_after = $link_after;
-			}
-
-			function start_lvl(&$output, $depth = 0, $args = array()) {
-				$indent = '';
-				$output .= "{$indent}<ul class=\"dropdown-menu list-unstyled\">";
-			}
+		function start_lvl(&$output, $depth = 0, $args = array()) {
+			$indent = '';
+			$output .= "{$indent}<ul class=\"dropdown-menu list-unstyled\">";
 		}
 	}
 
-	add_filter('nav_menu_link_attributes', function ($atts, $item, $args) {
-		if ($args->has_children && current_theme_supports('bootstrap')) {
-			$atts['data-hover'] = 'dropdown';
-			$atts['data-toggle'] = 'dropdown';
-			$atts['class'] = 'dropdown-toggle';
+	add_filter('nav_menu_link_attributes', function($atts, $item, $args) {
+		if (current_theme_supports('bootstrap')) {
+			global $params;
+
+			if ($args->has_children && !in_array('hover', $params)) {
+				$atts['data-toggle'] = 'dropdown';
+				$atts['class'] = 'dropdown-toggle';
+			}
 		}
 
 		return $atts;
 	}, 10, 3);
 
-	add_action('admin_menu', function () {
+	add_filter('nav_menu_css_class', function($classes, $item, $args) {
+		if (current_theme_supports('bootstrap')) {
+			global $params;
+
+			if ($args->has_children) {
+				$classes[] = 'dropdown';
+
+				if (in_array('hover', $params)) {
+					$classes[] = 'dropdown-toggle';
+				}
+			}
+		}
+
+		return $classes;
+	}, 1, 3);
+
+	add_action('admin_menu', function() {
 		if (current_theme_supports('remove-comments')) {
 			remove_menu_page('edit-comments.php');
 		}
 	});
 
-	add_action('wp_before_admin_bar_render', function () {
+	add_action('wp_before_admin_bar_render', function() {
 		if (current_theme_supports('remove-comments')) {
 			global $wp_admin_bar;
 			$wp_admin_bar->remove_menu('comments');
 		}
 	});
 
-	add_action('init', function () {
+	add_action('init', function() {
 		if (current_theme_supports('remove-comments')) {
 			remove_post_type_support('post', 'comments');
 			remove_post_type_support('page', 'comments');
