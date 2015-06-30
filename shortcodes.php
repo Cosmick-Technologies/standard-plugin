@@ -19,10 +19,6 @@
 		return "mailto:{$params['value']}";
 	});
 
-	add_shortcode('analytics', function () {
-		return '<script type="text/javascript">var _gaq=_gaq||[];_gaq.push(["_setAccount","' . get_theme_mod('analytics_id') . '"]),_gaq.push(["_trackPageview"]),function(){var t=document.createElement("script");t.type="text/javascript",t.async=!0,t.src=("https:"==document.location.protocol?"https://ssl":"http://www")+".google-analytics.com/ga.js";var e=document.getElementsByTagName("script")[0];e.parentNode.insertBefore(t,e)}();</script>';
-	});
-
 	add_shortcode('html_audio', function($attr) {
 		register_audio_js();
 		$PARAMS = shortcode_atts(array('src' => '', 'align' => 'right', 'controls' => ''), $attr, 'html_audio');
@@ -35,4 +31,12 @@
 		return $HTML;
 	});
 
-	
+	add_shortcode('analytics', function () {
+		return '<script type="text/javascript">var _gaq=_gaq||[];_gaq.push(["_setAccount","' . get_theme_mod('analytics_id') . '"]),_gaq.push(["_trackPageview"]),function(){var t=document.createElement("script");t.type="text/javascript",t.async=!0,t.src=("https:"==document.location.protocol?"https://ssl":"http://www")+".google-analytics.com/ga.js";var e=document.getElementsByTagName("script")[0];e.parentNode.insertBefore(t,e)}();</script>';
+	});
+
+	add_shortcode('g_event', function ($attr) {
+		$params = shortcode_atts(array('type' => 'click', 'name' => 'Unknown'), $attr);
+
+		return sprintf(' onclick="_gaq.push([\'_trackEvent\', \'%s\', \'clicked\'])"', $params['name']);
+	});

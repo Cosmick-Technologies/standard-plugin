@@ -15,24 +15,6 @@
 
 	include('custom-functions.php');
 	include('theme-options.php');
-
-	add_action('wp_head', function() {
-		switch (strToLower(get_theme_mod('site_mode'))) {
-			case 'dev':
-				global $post;
-				if (!is_user_logged_in()) {
-					die('<meta http-equiv="refresh" content="0;URL=\'' . wp_login_url() . '\'" />');
-				}
-				break;
-			case 'prev':
-				global $post;
-				if (!is_user_logged_in() && get_post($post)->post_name != 'preview') {
-					die('<meta http-equiv="refresh" content="0;URL=\'' . get_permalink(get_page_by_path('preview')) . '\'" />');
-				}
-				break;
-		}
-	});
-
 	include('shortcodes.php');
 
 	add_theme_support('title-tag');
@@ -45,10 +27,9 @@
 	add_action('init', function() {
 		if (!is_admin()) {
 			wp_deregister_script('jquery');
-			wp_register_script('jquery', '/wp-includes/js/jquery/jquery.js', FALSE, NULL, TRUE);
-			wp_register_script('jquery-migrate', '/wp-includes/js/jquery/jquery-migrate.min.js', array('jquery'), NULL, TRUE);
+			wp_register_script('jquery', 'https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js', FALSE, NULL, FALSE);
 		}
-	});
+	}, 10);
 
 	add_action('init', function() {
 		if (current_theme_supports('slider')) {
@@ -122,7 +103,7 @@
 				if ($nav_location == 'sidebar') {
 					$args->link_after = ' <span class="carat-right glyphicon glyphicon-triangle-right pull-right"></span>';
 				} else {
-					$args->link_after = ' <span class="carat-down glyphicon glyphicon-triangle-bottom"></span>';
+					$args->link_after = ' <span class="caret"></span>';
 				}
 			}
 
