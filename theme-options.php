@@ -186,23 +186,4 @@
 				'settings' => 'analytics_id'
 			)
 		));
-
-		$wp_customize->add_setting('site_mode', array(
-			'default' => 'prod',
-			'transport' => 'refresh'
-		));
-
-		$wp_customize->add_control(new WP_Customize_Control(
-			$wp_customize, 'site_mode', array(
-				'label' => 'Site Mode',
-				'section' => 'misc',
-				'settings' => 'site_mode',
-				'type' => 'radio',
-				'choices' => array(
-					'prod' => 'Production',
-					'dev' => 'Development',
-					'prev' => 'Client Preview'
-				)
-			)
-		));
 	});
